@@ -1,0 +1,24 @@
+[project]
+name = "entre-nos-backend"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Yago-Ferraz",email = "yagomouraferraz100@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12,<4.0"
+dependencies = [
+    "django (>=5.2.7,<6.0.0)",
+    "djangorestframework (>=3.16.1,<4.0.0)",
+    "drf-spectacular (>=0.28.0,<0.29.0)",
+    "djoser (>=2.3.3,<3.0.0)",
+    "djangorestframework-simplejwt (>=5.5.1,<6.0.0)",
+    "psycopg[binary] (>=3.2.10,<4.0.0)",
+    "colorama (>=0.4.6,<0.5.0)",
+    "python-dotenv (>=1.1.1,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
