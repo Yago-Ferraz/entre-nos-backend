@@ -30,7 +30,9 @@ SECRET_KEY = 'django-insecure-)n_o-34sa14u=m0!4bmd#6q_(i924h2&l3z*a#4%vmgv!r1uxh
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [ "localhost",
+    "127.0.0.1",
+    "192.168.58.179",]
 
 AUTH_USER_MODEL = 'users.User'
 
@@ -84,6 +86,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'backend.wsgi.application'
+
 
 
 # Database
