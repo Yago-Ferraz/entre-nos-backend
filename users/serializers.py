@@ -1,62 +1,124 @@
 # users/serializers.py
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from djoser.serializers import UserCreateSerializer as DjoserUserCreateSerializer
-from djoser.serializers import UserCreateSerializer
-from .models import Foto
+from .models import Empresa, FotoEmpresa
+from .models import FotoEmpresa
 
 User = get_user_model()
 
-class FotoSerializer(serializers.ModelSerializer):
+class FotoEmpresaSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
-        fields = ['id', 'fotos']
+        model = FotoEmpresa
+        fields = ['id', 'imagem']
 
-class UsersSerializer(UserCreateSerializer):
-    password = serializers.CharField(write_only=True, required=True)
-    email = serializers.EmailField(required=True)
-    fotos = serializers.ListField(
-        child=serializers.ImageField(), required=False
-    )
-    logo = serializers.ImageField(required=False)
+class UserCreateSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+    
     class Meta:
         model = User
-        fields = [
-            'id',
-            'email',
-            'name',
-            'password',
-            'usertype',
-            'phone',
-            'cnpj',
-            'categoria',
-            'descricao',
-            'logo',
-            'fotos',
-        ]
-        read_only_fields = ['id']
+        fields = ['name', 'email', 'phone', 'usertype', 'password']
+        
 
     def create(self, validated_data):
-        request = self.context.get('request')
-
-        # Remove arquivos de validated_data
-        logo_file = request.FILES.get('logo') if request else None
-        fotos_files = request.FILES.getlist('fotos') if request else []
-
-        validated_data.pop('fotos', None)
-        validated_data.pop('logo', None)
-
         password = validated_data.pop('password')
         user = User.objects.create_user(password=password, **validated_data)
-
-        # Salva logo
-        if logo_file:
-            user.logo = logo_file
-            user.save()
-
-        # Salva fotos
-        for f in fotos_files:
-            Foto.objects.create(user=user, imagem=f)
-
         return user
     
+
+class EmpresaSerializer(serializers.ModelSerializer):
+    fotos = FotoEmpresaSerializer(many=True, read_only=True)
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+
+    # Para upload de fotos junto com a empresa
+    fotos_upload = serializers.ListField(
+        child=serializers.ImageField(max_length=1000000, allow_empty_file=False, use_url=False),
+        write_only=True,
+        required=False
+    ) 
+
+    class Meta:
+        model = Empresa
+        fields = ['id', 'user', 'categoria', 'descricao', 'logo', 'fotos', 'fotos_upload']
+
+    def create(self, validated_data):
+        fotos_upload = validated_data.pop('fotos_upload', [])
+        empresa = Empresa.objects.create(**validated_data)
+
+        # Criar objetos FotoEmpresa
+        for foto in fotos_upload:
+            FotoEmpresa.objects.create(empresa=empresa, imagem=foto)
+
+        return empresa
+
+    def update(self, instance, validated_data):
+        fotos_upload = validated_data.pop('fotos_upload', [])
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        for foto in fotos_upload:
+            FotoEmpresa.objects.create(empresa=instance, imagem=foto)
+
+        return instance
+    
+
+class CustomUserSerializer(serializers.ModelSerializer):
+    empresa = EmpresaSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'name', 'email', 'usertype', 'empresa']
+
+
+from rest_framework import serializers
+
+class BaseModelEnvelopeSerializer(serializers.ModelSerializer):
+    criador_nome = serializers.SerializerMethodField()
+    created_by_nome = serializers.SerializerMethodField()
+    updated_by_nome = serializers.SerializerMethodField()
+    results = serializers.SerializerMethodField()
+
+    class Meta:
+        model = None  # definido no serializer filho
+        fields = [
+            'id', 'criador_nome', 'created_at', 'updated_at',
+            'created_by_nome', 'updated_by_nome', 'results'
+        ]
+        read_only_fields = fields
+
+    def get_criador_nome(self, obj):
+        return getattr(obj.created_by, 'username', None)
+
+    def get_created_by_nome(self, obj):
+        return getattr(obj.created_by, 'username', None)
+
+    def get_updated_by_nome(self, obj):
+        return getattr(obj.updated_by, 'username', None)
+
+    def get_results(self, obj):
+        base_fields = {'id', 'created_at', 'updated_at', 'created_by', 'updated_by'}
+        result = {}
+        for f in obj._meta.get_fields():
+            if f.name in base_fields:
+                continue
+            # evita relações many-to-many ou reverse
+            if f.many_to_many or f.one_to_many:
+                continue
+            value = getattr(obj, f.name)
+            # se for ImageField ou FileField, retorna a URL
+            if isinstance(f, (ImageField, FileField)) and value:
+                value = value.url
+            result[f.name] = value
+        return result
+
+    # Preenche automaticamente created_by e updated_by
+    def create(self, validated_data):
+        user = self.context['request'].user
+        validated_data['created_by'] = user
+        validated_data['updated_by'] = user
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        user = self.context['request'].user
+        validated_data['updated_by'] = user
+        return super().update(instance, validated_data)

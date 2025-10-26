@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+ 
 from pathlib import Path
 from dotenv import load_dotenv
 import os
@@ -20,6 +20,8 @@ load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+MEDIA_URL = '/media/'  # URL para acessar os arquivos
+MEDIA_ROOT = BASE_DIR / 'media' # Pasta física onde os arquivos serão salvos
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -30,9 +32,7 @@ SECRET_KEY = 'django-insecure-)n_o-34sa14u=m0!4bmd#6q_(i924h2&l3z*a#4%vmgv!r1uxh
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [ "localhost",
-    "127.0.0.1",
-    "192.168.58.179",]
+ALLOWED_HOSTS = ['*']
 
 AUTH_USER_MODEL = 'users.User'
 
@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'djoser',
     'users',
+    'produtos',
 ]
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
