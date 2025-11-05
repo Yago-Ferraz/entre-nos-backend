@@ -3,6 +3,12 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Empresa, FotoEmpresa
 from .models import FotoEmpresa
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from djoser.serializers import TokenCreateSerializer
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+
+
 
 User = get_user_model()
 
@@ -122,3 +128,5 @@ class BaseModelEnvelopeSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         validated_data['updated_by'] = user
         return super().update(instance, validated_data)
+    
+
