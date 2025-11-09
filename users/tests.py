@@ -88,7 +88,6 @@ class AuthTests(APITestCase):
         self.assertIn("detail", response.data)
         self.assertEqual(str(response.data["detail"][0]), "Email ou Senha incorreta.")
 
-    
     def test_login_conta_bloqueada_TC0012(self):
         """
         MUN-6 TC0012 - Tentativa de login em uma conta bloqueada administrativamente.
@@ -105,17 +104,43 @@ class AuthTests(APITestCase):
         data = {"email": usuario_bloqueado.email, "password": "SenhaBloqueada123"}
         response = self.client.post(self.url, data, format="json")
 
-        # O sistema deve impedir o login e retornar erro informando o problema
+        # O sistema deve impedir o login
         self.assertIn(response.status_code, [
             status.HTTP_400_BAD_REQUEST,
             status.HTTP_403_FORBIDDEN,
             status.HTTP_401_UNAUTHORIZED
         ])
         self.assertIn("detail", response.data)
+
+        # Trata se for lista ou string
         detail_value = response.data["detail"]
         if isinstance(detail_value, list):
             detail_value = detail_value[0]
+
         self.assertRegex(
-            response.data["detail"].lower(),
+            detail_value.lower(),
             r"(bloquead|suporte|inativo|não\s*permitido)"
         )
+    def test_email_duplicado_TC002(self):
+        """
+        MUN-5 TC002 - [Validação] E-mail Duplicado.
+        Deve impedir o cadastro e exibir: "Este e-mail já está cadastrado."
+        """
+        data = {
+            "email": self.email_existente,
+            "password": "OutraSenha123",
+            "name": "Novo Usuário"
+        }
+
+        response = self.client.post(self.url, data, format="json")
+
+        # O sistema deve retornar erro 400
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("email", response.data)
+
+        # Trata se vier lista ou string
+        erro = response.data["email"]
+        if isinstance(erro, list):
+            erro = erro[0]
+
+        self.assertEqual(erro, "Este e-mail já está cadastrado.")
