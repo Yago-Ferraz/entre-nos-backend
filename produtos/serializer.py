@@ -34,6 +34,15 @@ class ProdutoSerializer(BaseModelEnvelopeSerializer):
     class Meta(BaseModelEnvelopeSerializer.Meta):
         model = Produto
     
+class ProdutoMinimalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Produto
+        fields = ['id', 'nome', 'preco', 'quantidade', 'imagem']
 
 
+
+class ProdutoAnalyticsSerializer(serializers.Serializer):
+    total_produtos = serializers.IntegerField()
+    estoque_baixo = serializers.IntegerField()
+    produto_mais_vendido = serializers.CharField(allow_null=True, allow_blank=True, required=False)
 
