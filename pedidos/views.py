@@ -8,4 +8,8 @@ class PedidoViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         usuario = self.request.user
-        return Pedido.objects.filter(usuario=usuario)
+        empresa = usuario.empresa  
+        a = Pedido.objects.filter(empresa=empresa)
+        print(a, empresa)
+        return a
+

@@ -16,7 +16,10 @@ class ProdutoCreateUpdateSerializer(serializers.ModelSerializer):
         print(user)
         validated_data['created_by'] = user
         validated_data['updated_by'] = user
+        validated_data['empresa'] = user.empresa 
+        
         return super().create(validated_data)
+    
 
     def update(self, instance, validated_data):
         validated_data['updated_by'] = self.context['request'].user

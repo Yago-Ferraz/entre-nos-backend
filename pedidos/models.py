@@ -1,6 +1,7 @@
 from django.db import models
 from users.models import User, BaseModel
 from produtos.models import Produto
+from users.models import Empresa
 
 
 class Pedido(BaseModel):
@@ -14,7 +15,7 @@ class Pedido(BaseModel):
 
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pendente")
-
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, null=True, blank=True)
     valor_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     def atualizar_total(self):
@@ -41,6 +42,17 @@ class ItemPedido(BaseModel):
         return f"{self.quantidade}x {self.produto.nome}"
 
     def save(self, *args, **kwargs):
+        # Preenche preço automaticamente
         if not self.preco_unitario:
             self.preco_unitario = self.produto.preco
+
+        # Se o pedido ainda não tem empresa, define automaticamente
+        if self.pedido.empresa is None:
+            self.pedido.empresa = self.produto.empresa
+            self.pedido.save()
+
+        # Se tentar adicionar item de outra empresa → ERRO
+        if self.pedido.empresa != self.produto.empresa:
+            raise ValueError("Todos os itens do pedido devem ser da mesma empresa.")
+
         super().save(*args, **kwargs)
