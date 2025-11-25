@@ -21,7 +21,10 @@ class ProdutoViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Produto.objects.filter(created_by=self.request.user)
+        user = self.request.user
+        if hasattr(user, 'empresa'):
+            return Produto.objects.filter(empresa=user.empresa)
+        return Produto.objects.none()
 
     def get_serializer_class(self):
         # POST/PUT/PATCH usam o serializer que seta created_by / updated_by
@@ -40,7 +43,10 @@ class ProdutoViewSet(viewsets.ModelViewSet):
     def analytics(self, request):
         user = request.user
 
-        produtos = Produto.objects.filter(created_by=user)
+        produtos = Produto.objects.none()
+        if hasattr(user, 'empresa'):
+            produtos = Produto.objects.filter(empresa=user.empresa)
+
         estoque_baixo_qs = produtos.filter(quantidade__lt=5)
         estoque_baixo = ProdutoMinimalSerializer(estoque_baixo_qs, many=True).data
 
