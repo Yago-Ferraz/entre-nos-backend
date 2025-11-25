@@ -15,7 +15,7 @@ class Pedido(BaseModel):
 
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pendente")
-    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, null=True, blank=True)
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, null=False, blank=False)
     valor_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     def atualizar_total(self):

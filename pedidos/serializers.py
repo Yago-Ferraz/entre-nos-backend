@@ -1,9 +1,11 @@
 from rest_framework import serializers
 from .models import Pedido, ItemPedido
 from produtos.models import Produto
+from produtos.serializer import ProdutoSerializer
 
 
 class ItemPedidoSerializer(serializers.ModelSerializer):
+    produto = ProdutoSerializer(read_only=True)
     subtotal = serializers.SerializerMethodField()
 
     class Meta:
@@ -17,6 +19,7 @@ class ItemPedidoSerializer(serializers.ModelSerializer):
 
 class PedidoSerializer(serializers.ModelSerializer):
     itens = ItemPedidoSerializer(many=True)
+    
 
     class Meta:
         model = Pedido

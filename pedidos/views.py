@@ -10,6 +10,5 @@ class PedidoViewSet(viewsets.ModelViewSet):
         usuario = self.request.user
         empresa = usuario.empresa  
         a = Pedido.objects.filter(empresa=empresa)
-        print(a, empresa)
         return a
 
