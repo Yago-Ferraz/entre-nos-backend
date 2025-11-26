@@ -19,11 +19,10 @@ class ItemPedidoSerializer(serializers.ModelSerializer):
 
 class PedidoSerializer(serializers.ModelSerializer):
     itens = ItemPedidoSerializer(many=True)
-    
 
     class Meta:
         model = Pedido
-        fields = ["id", "usuario", "empresa", "status", "valor_total", "itens"]
+        fields = ["id", "usuario", "empresa", "status", "valor_total", "itens", "descricao"]
         read_only_fields = ["id", "valor_total", "status", "empresa"]
 
     def create(self, validated_data):
@@ -82,3 +81,9 @@ class PedidoSerializer(serializers.ModelSerializer):
         pedido.save()
 
         return pedido
+
+
+class PedidoUpdateStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Pedido
+        fields = ["status", "descricao"]
