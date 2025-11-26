@@ -15,6 +15,7 @@ class ProdutoAdmin(admin.ModelAdmin):
         'updated_at',
         'created_by_nome',
         'updated_by_nome',
+        'empresa'
     )
     readonly_fields = (
         'id',
