@@ -24,6 +24,7 @@ urlpatterns = [
     path('api/', include(users_router.urls)),
     path('api/', include(produtos_router.urls)),
     path('api/', include(pedidos_router.urls)),
+    path('api/', include('moeda.urls')),
      
 ]
 
