@@ -27,7 +27,7 @@ class ItemPedidoInline(admin.TabularInline):
 # ============================
 @admin.register(Pedido)
 class PedidoAdmin(admin.ModelAdmin):
-    list_display = ("id", "usuario", "status", "valor_total", "created_at", "created_by", "updated_at", "updated_by")
+    list_display = ("id", "usuario", "empresa", "status", "valor_total", "created_at", "created_by", "updated_at", "updated_by")
     list_filter = ("status", "created_at", "created_by", "updated_by")
     search_fields = ("id", "usuario__name", "usuario__email")
     readonly_fields = ("valor_total", "created_at", "updated_at", "created_by", "updated_by")
@@ -36,7 +36,7 @@ class PedidoAdmin(admin.ModelAdmin):
 
     fieldsets = (
         (None, {
-            'fields': ("usuario", "status", "valor_total")
+            'fields': ("usuario", "empresa", "status", "valor_total")
         }),
         ('Auditoria', {
             'fields': ("created_at", "created_by", "updated_at", "updated_by")
@@ -49,7 +49,6 @@ class PedidoAdmin(admin.ModelAdmin):
         form.instance.atualizar_total()
         return instances
 
-    # Recalcula o total ao salvar o pedido diretamente
     def save_model(self, request, obj, form, change):
         if not change:
             obj.created_by = request.user
