@@ -113,6 +113,9 @@ class Transacao(BaseModel):
         ]
 
     def __str__(self):
+        if self.valor_movimentado is None:
+            # Provide a fallback string if valor_movimentado is not yet set
+            return f"{self.get_tipo_operacao_display()}: (valor_movimentado não definido) ({self.tipo_ativo})"
         sinal = "+" if self.valor_movimentado >= 0 else "-"
         return f"{self.get_tipo_operacao_display()}: {sinal} {self.valor} ({self.tipo_ativo})"
 
