@@ -26,6 +26,7 @@ urlpatterns = [
     path('api/', include(produtos_router.urls)),
     path('api/', include(pedidos_router.urls)),
     path('api/', include('moeda.urls')),
+    path('api/loja/', include('loja.urls')), # Added this line
      
 ]
 

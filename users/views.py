@@ -14,6 +14,30 @@ from produtos.models import Produto
 from moeda.models import Carteira
 from django.utils import timezone
 from pedidos.models import ItemPedido, Pedido
+from django.db.models import Count, F
+from .serializers_dashboard import WeeklyDashboardStatsSerializer
+
+
+DRA_CLARA_PHRASES = [
+    "A persistência é o caminho para o êxito. Continue firme!",
+    "Analise seus dados, entenda seu cliente e otimize suas estratégias. O sucesso é uma construção diária.",
+    "Cada desafio é uma oportunidade de inovar. Não se prenda ao passado, crie o futuro.",
+    "O planejamento estratégico não é um luxo, é uma necessidade. Visualize o futuro e trabalhe para alcançá-lo.",
+    "Invista em sua equipe, pois são eles que impulsionam o seu negócio. Um time motivado é um time vitorioso.",
+    "A comunicação clara e eficiente é a base de qualquer negócio próspero. Fale com seus clientes e ouça-os atentamente.",
+    "Mantenha-se atualizado com as tendências do mercado. A estagnação é o maior inimigo do crescimento.",
+    "A qualidade do seu produto ou serviço é a sua melhor propaganda. Supere as expectativas dos seus clientes.",
+    "A inovação não precisa ser disruptiva; pequenas melhorias contínuas geram grandes resultados a longo prazo.",
+    "Construa relacionamentos duradouros com seus parceiros e clientes. Network é patrimônio.",
+]
+
+ALERT_PHRASES = [
+    "Atenção: Queda de vendas nesta semana. Verifique seus produtos mais vendidos.",
+    "Alerta: Estoque baixo para o produto X. Considere reabastecer.",
+    "Notificação: Alta demanda pelo produto Y. Aumente a produção!",
+    "Lembrete: Sua meta diária não foi atingida. Revise suas estratégias.",
+    "Aviso: Novo concorrente no mercado. Monitore suas ações.",
+]
 
 
 User = get_user_model()
@@ -219,6 +243,93 @@ class EmpresaViewSet(viewsets.ModelViewSet):
         }
 
         serializer = DashboardStatsSerializer(dashboard_data)
+        return Response(serializer.data)
+
+    @extend_schema(
+        summary="Obter resumo semanal do dashboard da empresa",
+        responses={200: WeeklyDashboardStatsSerializer}
+    )
+    @action(detail=False, methods=['get'], url_path='weekly-dashboard-summary')
+    def weekly_dashboard_summary(self, request):
+        empresa = self.get_queryset().first()
+        if not empresa:
+            return Response({"error": "Empresa não encontrada."}, status=404)
+
+        # Date calculations
+        today = timezone.now().date()
+        start_of_current_week = today - timedelta(days=today.weekday())
+        end_of_current_week = start_of_current_week + timedelta(days=6)
+
+        # 1. Weekly Sales Total
+        current_week_sales_queryset = Pedido.objects.filter(
+            empresa=empresa,
+            created_at__date__range=[start_of_current_week, end_of_current_week],
+            status__in=['pago', 'concluido']
+        )
+        total_sales_current_week = current_week_sales_queryset.aggregate(
+            total=Sum('valor_total')
+        )['total'] or 0
+
+        # 2. Best-Selling Product of the Week
+        products_sold_current_week = ItemPedido.objects.filter(
+            pedido__empresa=empresa,
+            pedido__created_at__date__range=[start_of_current_week, end_of_current_week],
+            pedido__status__in=['pago', 'concluido']
+        ).values('produto__nome').annotate(
+            total_quantidade_vendida=Sum('quantidade')
+        ).order_by('-total_quantidade_vendida')
+
+        produto_mais_vendido_data = {"nome": "Nenhum", "porcentagem_total": 0}
+
+        if products_sold_current_week.exists():
+            most_sold_product = products_sold_current_week.first()
+            total_all_products_quantity = ItemPedido.objects.filter(
+                pedido__empresa=empresa,
+                pedido__created_at__date__range=[start_of_current_week, end_of_current_week],
+                pedido__status__in=['pago', 'concluido']
+            ).aggregate(total_q=Sum('quantidade'))['total_q'] or 0
+
+            if total_all_products_quantity > 0:
+                produto_mais_vendido_data = {
+                    "nome": most_sold_product['produto__nome'],
+        
+                }
+
+        # 3. Weekly Sales Target
+        weekly_sales_target = empresa.meta * 7
+
+        # 4. Random "Dra. Clara" Phrases
+        random_dra_clara_phrases = random.sample(DRA_CLARA_PHRASES, min(3, len(DRA_CLARA_PHRASES)))
+
+        # 5. Random "Intelligent Alert" Phrases
+        random_alert_phrases = random.sample(ALERT_PHRASES, min(2, len(ALERT_PHRASES)))
+
+        # 6. Daily Sales Value (Monday to Friday)
+        sales_by_day = {}
+        day_names = {
+            1: 'segunda', 2: 'terca', 3: 'quarta', 4: 'quinta', 5: 'sexta'
+        }
+        for i in range(1, 6): # Monday to Friday
+            day = start_of_current_week + timedelta(days=i - 1)
+            daily_sales_total = Pedido.objects.filter(
+                empresa=empresa,
+                created_at__date=day,
+                status__in=['pago', 'concluido']
+            ).aggregate(total=Sum('valor_total'))['total'] or 0
+            sales_by_day[day_names[i]] = daily_sales_total
+
+        # Prepare the response data
+        response_data = {
+            "total_venda_semana": total_sales_current_week,
+            "produto_mais_vendido_semana": produto_mais_vendido_data,
+            "meta_diaria": empresa.meta, # Added this line
+            "meta_semanal": weekly_sales_target,
+            "frases_dra_clara": random_dra_clara_phrases,
+            "alertas_inteligentes": random_alert_phrases,
+            "vendas_por_dia_semana": sales_by_day,
+        }
+        
+        serializer = WeeklyDashboardStatsSerializer(response_data)
         return Response(serializer.data)
     
 class MeView(APIView):
