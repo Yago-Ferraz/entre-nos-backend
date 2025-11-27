@@ -68,12 +68,38 @@ class EmpresaSerializer(serializers.ModelSerializer):
         return instance
     
 
+class EmpresaStatsSerializer(serializers.Serializer):
+    total_produtos = serializers.IntegerField(read_only=True)
+    total_pedidos = serializers.IntegerField(read_only=True)
+    moedas = serializers.IntegerField(read_only=True)
+
+
+class EmpresaMetaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Empresa
+        fields = ['meta']
+
+class EmpresaAvaliacaoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Empresa
+        fields = ['avaliacao']
+
+
+class EmpresaDashboardSerializer(serializers.Serializer):
+    meta = serializers.IntegerField()
+    vendas_hoje = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+
 class CustomUserSerializer(serializers.ModelSerializer):
     empresa = EmpresaSerializer(read_only=True)
 
     class Meta:
         model = User
         fields = ['id', 'name', 'email', 'usertype', 'empresa']
+
+
+class MotivacionalSerializer(serializers.Serializer):
+    phrase = serializers.CharField(help_text="Frase motivacional aleatória")
 
 
 from rest_framework import serializers

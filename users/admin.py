@@ -45,10 +45,19 @@ class FotoEmpresaInline(admin.TabularInline):
 # --- EMPRESA ADMIN ---
 @admin.register(Empresa)
 class EmpresaAdmin(admin.ModelAdmin):
-    list_display = ('user', 'categoria', 'descricao', 'logo_preview')
+    list_display = ('user', 'categoria', 'meta', 'avaliacao', 'logo_preview')
     list_filter = ('categoria',)
     search_fields = ('user__name', 'user__email')
     inlines = [FotoEmpresaInline]
+
+    fieldsets = (
+        (None, {
+            'fields': ('user', 'categoria', 'descricao', 'logo', 'logo_preview')
+        }),
+        ('Métricas', {
+            'fields': ('meta', 'avaliacao')
+        }),
+    )
 
     readonly_fields = ('logo_preview',)
 

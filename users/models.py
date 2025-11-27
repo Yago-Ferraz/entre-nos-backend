@@ -2,7 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.validators import RegexValidator
 from users.managers import UserManager
-
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 
 # Validador de telefone
@@ -70,6 +70,14 @@ class Empresa(models.Model):
     categoria = models.IntegerField(choices=CategoriaChoices.choices, blank=True, null=True)
     descricao = models.TextField(blank=True, null=True)
     logo = models.ImageField(upload_to='logos/', blank=True, null=True)
+    meta = models.IntegerField(default=1000)
+    avaliacao = models.IntegerField(
+        default=0,
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(5)
+        ]
+    )
 
     def __str__(self):
         return f"{self.user.name} - {self.get_categoria_display() if self.categoria else 'Sem categoria'}"
