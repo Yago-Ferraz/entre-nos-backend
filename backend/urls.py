@@ -4,7 +4,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from users.routers import router as users_router
 from django.conf import settings
 from django.conf.urls.static import static
-from users.views import MeView
+from users.views import MeView, MotivacionalView # Added MotivacionalView
 from produtos.routers import router as produtos_router
 from users.views import CustomTokenObtainPairView
 from pedidos.routes import router  as pedidos_router
@@ -17,6 +17,7 @@ urlpatterns = [
     path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     path('api/auth/users/me/', MeView.as_view(), name='user-me'),
     path('api/auth/jwt/create/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/motivacional/', MotivacionalView.as_view(), name='motivacional-phrases'), # Added MotivacionalView path
     # Auth via Djoser
     path('api/auth/', include('djoser.urls')),
     path('api/auth/', include('djoser.urls.jwt')),  # se usar JWT
@@ -24,6 +25,8 @@ urlpatterns = [
     path('api/', include(users_router.urls)),
     path('api/', include(produtos_router.urls)),
     path('api/', include(pedidos_router.urls)),
+    path('api/', include('moeda.urls')),
+    path('api/loja/', include('loja.urls')), # Added this line
      
 ]
 

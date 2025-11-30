@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.html import format_html
 from .models import Produto
 
 @admin.register(Produto)
@@ -10,11 +11,10 @@ class ProdutoAdmin(admin.ModelAdmin):
         'preco',
         'quantidade',
         'imagem_preview',
-        'criador_nome',
         'created_at',
         'updated_at',
-        'created_by_nome',
-        'updated_by_nome',
+        'created_by',
+        'updated_by',
         'empresa'
     )
     readonly_fields = (
@@ -29,10 +29,10 @@ class ProdutoAdmin(admin.ModelAdmin):
 
     fieldsets = (
         (None, {
-            'fields': ('nome', 'descricao', 'preco', 'quantidade', 'imagem')
+            'fields': ('nome', 'descricao', 'preco', 'quantidade', 'imagem', 'empresa')
         }),
         ('Informações de Sistema', {
-            'fields': ('id', 'created_at', 'updated_at', 'created_by', 'updated_by')
+            'fields': ('id', 'created_at', 'created_by', 'updated_at', 'updated_by')
         }),
     )
 
@@ -41,28 +41,14 @@ class ProdutoAdmin(admin.ModelAdmin):
         qs = super().get_queryset(request)
         return qs.select_related('created_by', 'updated_by')
 
+    @admin.display(description='Imagem')
     def imagem_preview(self, obj):
         if obj.imagem:
-            return f'<img src="{obj.imagem.url}" width="50" height="50" />'
+            return format_html('<img src="{}" width="50" height="50" />', obj.imagem.url)
         return "-"
-    imagem_preview.allow_tags = True
-    imagem_preview.short_description = 'Imagem'
 
-    def criador_nome(self, obj):
-        # Retorna o nome do usuário ou o ID caso não exista
-        if obj.created_by:
-            return obj.created_by.name
-        return obj.created_by_id or "-"
-    criador_nome.short_description = 'Criador'
-
-    def created_by_nome(self, obj):
-        if obj.created_by:
-            return obj.created_by.name
-        return obj.created_by_id or "-"
-    created_by_nome.short_description = 'Criado por'
-
-    def updated_by_nome(self, obj):
-        if obj.updated_by:
-            return obj.updated_by.name
-        return obj.updated_by_id or "-"
-    updated_by_nome.short_description = 'Atualizado por'
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)

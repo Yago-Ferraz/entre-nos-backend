@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Pedido, ItemPedido
 from produtos.models import Produto
 from produtos.serializer import ProdutoSerializer
+from users.models import User
 
 
 class ItemPedidoSerializer(serializers.ModelSerializer):
@@ -19,11 +20,18 @@ class ItemPedidoSerializer(serializers.ModelSerializer):
 
 class PedidoSerializer(serializers.ModelSerializer):
     itens = ItemPedidoSerializer(many=True)
+    comprador = serializers.CharField(source='usuario.name', read_only=True)
+    usuario = serializers.HiddenField(default=serializers.CurrentUserDefault())
 
     class Meta:
         model = Pedido
-        fields = ["id", "usuario", "empresa", "status", "valor_total", "itens", "descricao"]
+        fields = ["id", "comprador", "usuario", "empresa", "status", "valor_total", "itens", "descricao"]
         read_only_fields = ["id", "valor_total", "status", "empresa"]
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation.pop('usuario', None)
+        return representation
 
     def create(self, validated_data):
         itens_data = validated_data.pop("itens")
