@@ -152,7 +152,7 @@ class AuthTests(APITestCase):
 
 
 
-class AuthTestsSet_us002(APITestCase):
+class AuthTestsSet_us003(APITestCase):
     def setUp(self):
         self.url = reverse("user-list")
         self.email = "usuario2@teste.com"
