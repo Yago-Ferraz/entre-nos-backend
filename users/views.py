@@ -1,5 +1,8 @@
 import random
-from rest_framework import viewsets, permissions, generics, status
+import os
+import json
+from google import genai
+from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
 from rest_framework.decorators import action
 from rest_framework.response import Response # Added this import
@@ -16,30 +19,6 @@ from django.utils import timezone
 from pedidos.models import ItemPedido, Pedido
 from django.db.models import Count, F
 from .serializers_dashboard import WeeklyDashboardStatsSerializer
-
-
-DRA_CLARA_PHRASES = [
-    "A persistência é o caminho para o êxito. Continue firme!",
-    "Analise seus dados, entenda seu cliente e otimize suas estratégias. O sucesso é uma construção diária.",
-    "Cada desafio é uma oportunidade de inovar. Não se prenda ao passado, crie o futuro.",
-    "O planejamento estratégico não é um luxo, é uma necessidade. Visualize o futuro e trabalhe para alcançá-lo.",
-    "Invista em sua equipe, pois são eles que impulsionam o seu negócio. Um time motivado é um time vitorioso.",
-    "A comunicação clara e eficiente é a base de qualquer negócio próspero. Fale com seus clientes e ouça-os atentamente.",
-    "Mantenha-se atualizado com as tendências do mercado. A estagnação é o maior inimigo do crescimento.",
-    "A qualidade do seu produto ou serviço é a sua melhor propaganda. Supere as expectativas dos seus clientes.",
-    "A inovação não precisa ser disruptiva; pequenas melhorias contínuas geram grandes resultados a longo prazo.",
-    "Construa relacionamentos duradouros com seus parceiros e clientes. Network é patrimônio.",
-]
-
-ALERT_PHRASES = [
-    "Atenção: Queda de vendas nesta semana. Verifique seus produtos mais vendidos.",
-    "Alerta: Estoque baixo para o produto X. Considere reabastecer.",
-    "Notificação: Alta demanda pelo produto Y. Aumente a produção!",
-    "Lembrete: Sua meta diária não foi atingida. Revise suas estratégias.",
-    "Aviso: Novo concorrente no mercado. Monitore suas ações.",
-]
-
-
 User = get_user_model()
 
 class UserCreateView(viewsets.ModelViewSet):
@@ -245,6 +224,66 @@ class EmpresaViewSet(viewsets.ModelViewSet):
         serializer = DashboardStatsSerializer(dashboard_data)
         return Response(serializer.data)
 
+    def _get_ai_insights(self, weekly_data):
+        """
+        Chama a API do Gemini para obter frases motivacionais e alertas
+        com base nos dados de BI da semana.
+        """
+        try:
+            api_key = os.getenv("GEMINI_API_KEY")
+            if not api_key:
+                raise ValueError("A chave de API do Gemini não foi encontrada nas variáveis de ambiente.")
+            
+            client = genai.Client(api_key=api_key)
+
+            # Monta o prompt para a IA
+            prompt = f"""
+            Você é a "Dra. Clara", uma consultora de negócios especialista em pequenos varejistas.
+            Sua tarefa é analisar os dados de desempenho semanal de uma loja e gerar:
+            1. Duas frases motivacionais e estratégicas (Dra. Clara).
+            2. Duas dicas de ouro (alertas inteligentes) sobre pontos de atenção ou oportunidades.
+
+            Dados da Semana:
+            - Total de Vendas da Semana Atual: R$ {weekly_data['total_venda_semana']:.2f}
+            - Total de Vendas da Semana Anterior: R$ {weekly_data.get('total_vendas_semana_anterior', 0):.2f}
+            - Meta de Vendas Semanal: R$ {weekly_data['meta_semanal']:.2f}
+            - Produto Mais Vendido da Semana: "{weekly_data['produto_mais_vendido_semana']['nome']}"
+            - Vendas por dia (seg-sex): {weekly_data['vendas_por_dia_semana']}
+
+            Com base nesses dados, forneça sua análise. Seja direta, inspiradora e acionável.
+            Retorne a resposta EXATAMENTE no seguinte formato JSON, sem nenhum texto adicional:
+            {{
+              "frases_dra_clara": ["frase 1", "frase 2"],
+              "alertas_inteligentes": ["alerta 1", "alerta 2"]
+            }}
+            """
+            response = client.models.generate_content(
+    model="gemini-2.5-flash",
+    contents=prompt,
+)
+            text = response.text
+            cleaned_response = (
+    text.strip()
+    .replace("```json", "")
+    .replace("```", "")
+)
+
+            return json.loads(cleaned_response)
+
+        except Exception as e:
+            # Em caso de erro na API, retorna frases padrão para não quebrar a aplicação
+            print(f"Erro ao chamar a API do Gemini: {e}")
+            return {
+                "frases_dra_clara": [
+                    "Analise seus dados e ajuste sua rota para o sucesso.",
+                    "A persistência é o caminho para o êxito. Continue firme!"
+                ],
+                "alertas_inteligentes": [
+                    "Monitore seus indicadores de perto para identificar oportunidades.",
+                    "Verifique o desempenho dos seus produtos mais vendidos."
+                ]
+            }
+
     @extend_schema(
         summary="Obter resumo semanal do dashboard da empresa",
         responses={200: WeeklyDashboardStatsSerializer}
@@ -259,6 +298,8 @@ class EmpresaViewSet(viewsets.ModelViewSet):
         today = timezone.now().date()
         start_of_current_week = today - timedelta(days=today.weekday())
         end_of_current_week = start_of_current_week + timedelta(days=6)
+        start_of_previous_week = start_of_current_week - timedelta(weeks=1)
+        end_of_previous_week = start_of_current_week - timedelta(days=1)
 
         # 1. Weekly Sales Total
         current_week_sales_queryset = Pedido.objects.filter(
@@ -267,6 +308,14 @@ class EmpresaViewSet(viewsets.ModelViewSet):
             status__in=['pago', 'concluido']
         )
         total_sales_current_week = current_week_sales_queryset.aggregate(
+            total=Sum('valor_total')
+        )['total'] or 0
+
+        total_sales_previous_week = Pedido.objects.filter(
+            empresa=empresa,
+            created_at__date__range=[start_of_previous_week, end_of_previous_week],
+            status__in=['pago', 'concluido']
+        ).aggregate(
             total=Sum('valor_total')
         )['total'] or 0
 
@@ -290,19 +339,14 @@ class EmpresaViewSet(viewsets.ModelViewSet):
             ).aggregate(total_q=Sum('quantidade'))['total_q'] or 0
 
             if total_all_products_quantity > 0:
+                porcentagem = (most_sold_product['total_quantidade_vendida'] / total_all_products_quantity) * 100
                 produto_mais_vendido_data = {
                     "nome": most_sold_product['produto__nome'],
-        
+                    "porcentagem_total": round(porcentagem, 2)
                 }
 
         # 3. Weekly Sales Target
         weekly_sales_target = empresa.meta * 7
-
-        # 4. Random "Dra. Clara" Phrases
-        random_dra_clara_phrases = random.sample(DRA_CLARA_PHRASES, min(3, len(DRA_CLARA_PHRASES)))
-
-        # 5. Random "Intelligent Alert" Phrases
-        random_alert_phrases = random.sample(ALERT_PHRASES, min(2, len(ALERT_PHRASES)))
 
         # 6. Daily Sales Value (Monday to Friday)
         sales_by_day = {}
@@ -324,11 +368,14 @@ class EmpresaViewSet(viewsets.ModelViewSet):
             "produto_mais_vendido_semana": produto_mais_vendido_data,
             "meta_diaria": empresa.meta, # Added this line
             "meta_semanal": weekly_sales_target,
-            "frases_dra_clara": random_dra_clara_phrases,
-            "alertas_inteligentes": random_alert_phrases,
             "vendas_por_dia_semana": sales_by_day,
+            "total_vendas_semana_anterior": total_sales_previous_week,
         }
         
+        # 4 & 5. Gerar frases e alertas com IA
+        ai_insights = self._get_ai_insights(response_data)
+        response_data.update(ai_insights)
+
         serializer = WeeklyDashboardStatsSerializer(response_data)
         return Response(serializer.data)
     
@@ -376,4 +423,3 @@ from .serializers_jwt import CustomTokenObtainPairSerializer
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
-
